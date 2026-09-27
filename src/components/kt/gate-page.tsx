@@ -10,7 +10,7 @@ export function GatePage({ onGuest }: { onGuest: () => void }) {
         <p className="brand-mark">LEO TREE</p>
         <h1 className="serif">{t("loginTitle")}</h1>
         <p className="brief">{t("loginBrief")}</p>
-        <div className="product-entries"><button className="btn primary" onClick={onGuest}>立即使用网页版</button><a className="btn" href="/download">下载本地版</a></div><p className="brief">Windows 本地版即将开放</p>
+        <div className="product-entries"><button className="btn primary" onClick={onGuest}>{t("useWebNow")}</button><a className="btn" href="/download">{t("downloadLocal")}</a></div><p className="brief">{t("windowsSoon")}</p>
         <SignInPanel />
       </div>
     </main>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Modal } from "./modal";
 import { progressOf } from "@/lib/knowledge-tree/progress";
 import { TEMPLATES } from "@/lib/knowledge-tree/templates";
@@ -22,6 +22,7 @@ export function GrovePage({
 }) {
   const { t } = useI18n();
   const [tplOpen, setTplOpen] = useState(false);
+  const firstCta = useRef<HTMLButtonElement>(null);
   const trees = Object.values(ws.trees);
   const templates = TEMPLATES.filter((tpl) => tpl.id !== "blank");
   return (
@@ -37,7 +38,7 @@ export function GrovePage({
         </div>
       </header>
       <div className="hero-actions grove-cta">
-        <button type="button" className="btn primary" onClick={onNewBlank}>
+        <button type="button" className="btn primary" ref={firstCta} onClick={onNewBlank}>
           {t("newBlank")}
         </button>
         <button type="button" className="btn" onClick={() => setTplOpen(true)}>
@@ -56,7 +57,7 @@ export function GrovePage({
       ) : (
         <p className="empty">{t("groveEmpty")}</p>
       )}
-      <div className="product-entries"><button className="btn" onClick={()=>document.querySelector<HTMLButtonElement>(".grove-cta button")?.focus()}>立即使用网页版</button><a className="btn" href="/download">下载本地版</a><small>Windows 本地版即将开放</small></div>
+      <div className="product-entries"><button className="btn" onClick={() => firstCta.current?.focus()}>{t("useWebNow")}</button><a className="btn" href="/download">{t("downloadLocal")}</a><small>{t("windowsSoon")}</small></div>
       {tplOpen ? (
         <Modal title={t("fromTemplateStart")} onClose={() => setTplOpen(false)}>
             <ul className="tpl-list">

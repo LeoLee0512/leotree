@@ -20,13 +20,14 @@ test("Creation card composes existing commands: blank defaults and description p
 });
 test("Backup recency handles never, invalid data, time skew and elapsed days",()=>{
   const now=Date.parse("2026-09-05T12:00:00Z");
-  assert.equal(backupAge(null,now),"从未");assert.equal(backupAge("bad",now),"从未");
-  assert.equal(backupAge("2026-09-06T12:00:00Z",now),"从未");
-  assert.equal(backupAge("2026-09-05T11:00:00Z",now),"今天");
-  assert.equal(backupAge("2026-09-02T12:00:00Z",now),"3 天前");
+  assert.deepEqual(backupAge(null,now),{kind:"never"});assert.deepEqual(backupAge("bad",now),{kind:"never"});
+  assert.deepEqual(backupAge("2026-09-06T12:00:00Z",now),{kind:"never"});
+  assert.deepEqual(backupAge("2026-09-05T11:00:00Z",now),{kind:"today"});
+  assert.deepEqual(backupAge("2026-09-02T12:00:00Z",now),{kind:"days",days:3});
 });
 test("Storage and recovery errors offer plain language without exposing internal enums",()=>{
-  for(const code of ["SAVE_FAILED","DEGRADED","RECOVERY_REQUIRED","UNKNOWN","CONFLICT","COORDINATION_UNAVAILABLE","PARSE_ERROR","STORAGE_ERROR"]) {
+  for(const code of ["SAVE_FAILED","DEGRADED","RECOVERY_REQUIRED","UNKNOWN","CONFLICT","COORDINATION_UNAVAILABLE","PARSE_ERROR","STORAGE_ERROR","HASH_MISMATCH","MISSING_ATTACHMENT"]) {
     const text=userMessage(code);assert.match(text,/[\u4e00-\u9fff]/);assert.ok(!text.includes(code));
+    const english=userMessage(code,"en");assert.match(english,/[A-Za-z]/);assert.doesNotMatch(english,/[\u4e00-\u9fff]/);assert.ok(!english.includes(code));
   }
 });

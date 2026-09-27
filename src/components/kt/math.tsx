@@ -2,8 +2,9 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "
 import * as Popover from "@radix-ui/react-popover";
 import "katex/dist/katex.min.css";
 import { hasMath, parseMathSegments } from "@/lib/math-text";
+import { useI18n } from "@/lib/i18n";
 
-// KaTeX is loaded lazily so pages without formulas never pay for it.
+// The KaTeX script (not its stylesheet) is loaded lazily so pages without formulas never pay for it.
 type KatexModule = typeof import("katex");
 let katexPromise: Promise<KatexModule> | null = null;
 function loadKatex(): Promise<KatexModule> {
@@ -54,31 +55,36 @@ export function MathText({ text }: { text: string }) {
   );
 }
 
-/** Click-to-insert LaTeX snippets. «…» marks the span selected after insertion. */
-type Snippet = { label: string; tex: string; title?: string };
+/**
+ * Click-to-insert LaTeX snippets. «…» marks the span selected after insertion.
+ * `label` is either a literal symbol or an i18n key (when `labelKey` is set).
+ */
+type Snippet = { label: string; tex: string; labelKey?: MathKey };
+type MathKey = "mathFrac" | "mathSquare" | "mathPower" | "mathSub" | "mathSqrt" | "mathNthRoot" | "mathSum" | "mathProd" | "mathInt" | "mathLim" | "mathParens" | "mathAbs" | "mathBinom" | "mathVector" | "mathHat" | "mathMean" | "mathMatrix" | "mathCases";
+type GroupKey = "mathGreek" | "mathRelations" | "mathFunctions" | "mathComposite";
 
 const PRIMARY: Snippet[] = [
-  { label: "分数", tex: "\\frac{«a»}{b}", title: "分式 a/b" },
-  { label: "平方", tex: "^{«2»}", title: "平方 x^{2}" },
-  { label: "n次方", tex: "^{«n»}", title: "n 次幂 x^{n}" },
-  { label: "下标", tex: "_{«n»}", title: "下标 x_{n}" },
-  { label: "根号", tex: "\\sqrt{«x»}", title: "平方根 √x" },
-  { label: "n次根", tex: "\\sqrt[«n»]{x}", title: "n 次根" },
-  { label: "±", tex: "\\pm", title: "正负 ±" },
-  { label: "×", tex: "\\times", title: "乘 ×" },
-  { label: "÷", tex: "\\div", title: "除 ÷" },
-  { label: "·", tex: "\\cdot", title: "点乘 ·" },
-  { label: "求和", tex: "\\sum_{«i=1»}^{n}", title: "连加 Σ" },
-  { label: "求积", tex: "\\prod_{«i=1»}^{n}", title: "连乘 Π" },
-  { label: "积分", tex: "\\int_{«a»}^{b}", title: "积分 ∫" },
-  { label: "极限", tex: "\\lim_{«x \\to 0»}", title: "极限 lim" },
-  { label: "括号", tex: "\\left(«»\\right)", title: "自适应括号" },
-  { label: "绝对值", tex: "\\left|«x»\\right|", title: "绝对值 |x|" },
+  { label: "", labelKey: "mathFrac", tex: "\\frac{«a»}{b}" },
+  { label: "", labelKey: "mathSquare", tex: "^{«2»}" },
+  { label: "", labelKey: "mathPower", tex: "^{«n»}" },
+  { label: "", labelKey: "mathSub", tex: "_{«n»}" },
+  { label: "", labelKey: "mathSqrt", tex: "\\sqrt{«x»}" },
+  { label: "", labelKey: "mathNthRoot", tex: "\\sqrt[«n»]{x}" },
+  { label: "±", tex: "\\pm" },
+  { label: "×", tex: "\\times" },
+  { label: "÷", tex: "\\div" },
+  { label: "·", tex: "\\cdot" },
+  { label: "", labelKey: "mathSum", tex: "\\sum_{«i=1»}^{n}" },
+  { label: "", labelKey: "mathProd", tex: "\\prod_{«i=1»}^{n}" },
+  { label: "", labelKey: "mathInt", tex: "\\int_{«a»}^{b}" },
+  { label: "", labelKey: "mathLim", tex: "\\lim_{«x \\to 0»}" },
+  { label: "", labelKey: "mathParens", tex: "\\left(«»\\right)" },
+  { label: "", labelKey: "mathAbs", tex: "\\left|«x»\\right|" },
 ];
 
-const GROUPS: Array<{ name: string; items: Snippet[] }> = [
+const GROUPS: Array<{ name: GroupKey; items: Snippet[] }> = [
   {
-    name: "希腊字母",
+    name: "mathGreek",
     items: [
       { label: "α", tex: "\\alpha" }, { label: "β", tex: "\\beta" }, { label: "γ", tex: "\\gamma" },
       { label: "δ", tex: "\\delta" }, { label: "ε", tex: "\\epsilon" }, { label: "ζ", tex: "\\zeta" },
@@ -92,7 +98,7 @@ const GROUPS: Array<{ name: string; items: Snippet[] }> = [
     ],
   },
   {
-    name: "关系与逻辑",
+    name: "mathRelations",
     items: [
       { label: "≠", tex: "\\neq" }, { label: "≤", tex: "\\leq" }, { label: "≥", tex: "\\geq" },
       { label: "≈", tex: "\\approx" }, { label: "≡", tex: "\\equiv" }, { label: "∝", tex: "\\propto" },
@@ -102,7 +108,7 @@ const GROUPS: Array<{ name: string; items: Snippet[] }> = [
     ],
   },
   {
-    name: "函数",
+    name: "mathFunctions",
     items: [
       { label: "sin", tex: "\\sin" }, { label: "cos", tex: "\\cos" }, { label: "tan", tex: "\\tan" },
       { label: "cot", tex: "\\cot" }, { label: "ln", tex: "\\ln" }, { label: "log", tex: "\\log" },
@@ -111,44 +117,49 @@ const GROUPS: Array<{ name: string; items: Snippet[] }> = [
     ],
   },
   {
-    name: "复合结构",
+    name: "mathComposite",
     items: [
-      { label: "二项式", tex: "\\binom{«n»}{k}", title: "C(n,k)" },
-      { label: "向量", tex: "\\vec{«v»}" },
-      { label: "帽子", tex: "\\hat{«x»}" },
-      { label: "均值", tex: "\\bar{«x»}" },
-      { label: "矩阵", tex: "\\begin{pmatrix} «a» & b \\\\ c & d \\end{pmatrix}" },
-      { label: "分段", tex: "\\begin{cases} «» \\end{cases}" },
+      { label: "", labelKey: "mathBinom", tex: "\\binom{«n»}{k}" },
+      { label: "", labelKey: "mathVector", tex: "\\vec{«v»}" },
+      { label: "", labelKey: "mathHat", tex: "\\hat{«x»}" },
+      { label: "", labelKey: "mathMean", tex: "\\bar{«x»}" },
+      { label: "", labelKey: "mathMatrix", tex: "\\begin{pmatrix} «a» & b \\\\ c & d \\end{pmatrix}" },
+      { label: "", labelKey: "mathCases", tex: "\\begin{cases} «» \\end{cases}" },
     ],
   },
 ];
 
-function PaletteBody({ insert, onPick }: { insert: (tex: string) => void; onPick?: () => void }) {
-  const chip = (s: Snippet) => (
+function SnippetChip({ snippet, insert, onPick }: { snippet: Snippet; insert: (tex: string) => void; onPick?: () => void }) {
+  const { t } = useI18n();
+  const label = snippet.labelKey ? t(snippet.labelKey) : snippet.label;
+  return (
     <button
-      key={s.label + s.tex}
       type="button"
       className="math-chip"
-      title={s.title ?? s.tex}
+      title={snippet.tex.replace(/[«»]/g, "")}
       onClick={() => {
-        insert(s.tex);
+        insert(snippet.tex);
         onPick?.();
       }}
     >
-      {s.label}
+      {label}
     </button>
   );
+}
+
+function PaletteBody({ insert, onPick }: { insert: (tex: string) => void; onPick?: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="math-palette">
-      <div className="math-cat">常用</div>
-      <div className="math-grid">{PRIMARY.map(chip)}</div>
+      <div className="math-cat">{t("mathCommon")}</div>
+      <div className="math-grid">{PRIMARY.map((s) => <SnippetChip key={s.tex} snippet={s} insert={insert} onPick={onPick} />)}</div>
       {GROUPS.map((g) => (
         <Fragment key={g.name}>
-          <div className="math-cat">{g.name}</div>
-          <div className="math-grid">{g.items.map(chip)}</div>
+          <div className="math-cat">{t(g.name)}</div>
+          <div className="math-grid">{g.items.map((s) => <SnippetChip key={s.tex} snippet={s} insert={insert} onPick={onPick} />)}</div>
         </Fragment>
       ))}
-      <p className="math-tip">点按插入到光标处，«选中部分」可直接输入替换。行内公式用 $…$ 包裹，独立公式用 $$…$$ 各占一行。</p>
+      <p className="math-tip">{t("mathTip")}</p>
     </div>
   );
 }
@@ -175,6 +186,7 @@ export function MathEditor({
   variant?: "full" | "compact";
   ariaLabel?: string;
 }) {
+  const { t } = useI18n();
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingSel = useRef<[number, number] | null>(null);
 
@@ -204,7 +216,7 @@ export function MathEditor({
 
   const preview = hasMath(value) ? (
     <div className="math-preview" aria-hidden="true">
-      <span className="math-preview-cap">ƒ 实时预览</span>
+      <span className="math-preview-cap">{t("livePreview")}</span>
       <MathText text={value} />
     </div>
   ) : null;
@@ -218,12 +230,12 @@ export function MathEditor({
           <span className="math-field-label">{label}</span>
           <Popover.Root>
             <Popover.Trigger asChild>
-              <button type="button" className="math-pop-trigger" aria-label="插入公式">
-                ƒ⁺ 公式
+              <button type="button" className="math-pop-trigger" aria-label={t("insertFormula")}>
+                {t("formulaBtn")}
               </button>
             </Popover.Trigger>
             <Popover.Portal>
-              <Popover.Content className="math-sheet" align="end" sideOffset={6} collisionPadding={12} aria-label="插入公式">
+              <Popover.Content className="math-sheet" align="end" sideOffset={6} collisionPadding={12} aria-label={t("insertFormula")}>
                 <PaletteBody insert={insert} />
               </Popover.Content>
             </Popover.Portal>
@@ -239,22 +251,18 @@ export function MathEditor({
     <div className="math-field">
       <div className="math-field-hd">
         <span className="math-field-label">{label}</span>
-        <span className="math-hint">$…$ 行内 · $$…$$ 独立成行</span>
+        <span className="math-hint">{t("mathHint")}</span>
       </div>
       <div className="math-toolbar">
-        {PRIMARY.map((s) => (
-          <button key={s.tex} type="button" className="math-chip" title={s.title ?? s.tex} onClick={() => insert(s.tex)}>
-            {s.label}
-          </button>
-        ))}
+        {PRIMARY.map((s) => <SnippetChip key={s.tex} snippet={s} insert={insert} />)}
         <Popover.Root>
           <Popover.Trigger asChild>
             <button type="button" className="math-chip math-more">
-              更多 ▾
+              {t("more")}
             </button>
           </Popover.Trigger>
           <Popover.Portal>
-            <Popover.Content className="math-sheet" align="start" sideOffset={6} collisionPadding={12} aria-label="更多公式符号">
+            <Popover.Content className="math-sheet" align="start" sideOffset={6} collisionPadding={12} aria-label={t("moreSymbols")}>
               <PaletteBody insert={insert} />
             </Popover.Content>
           </Popover.Portal>

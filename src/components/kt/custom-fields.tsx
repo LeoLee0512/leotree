@@ -19,8 +19,8 @@ export function CustomFields({
   }
   return (
     <>
-      {groups.map((g) => (
-        <div key={g.name || "default"} className={g.items.length > 1 ? "form-grid" : undefined}>
+      {groups.map((g, i) => (
+        <div key={`${g.name}-${i}`} className={g.items.length > 1 ? "form-grid" : undefined}>
           {g.items.map((def) => (
             <Field key={def.id} def={def} value={values[def.id]} onChange={onChange} />
           ))}

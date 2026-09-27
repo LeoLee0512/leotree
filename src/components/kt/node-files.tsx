@@ -18,7 +18,7 @@ export function NodeFiles({
   files: NodeAttachment[];
   treeId: string; nodeId: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const service = useWorkspaceService();
   const inputRef = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState("");
@@ -31,7 +31,7 @@ export function NodeFiles({
     const ok = await service.addFiles(treeId,nodeId,Array.from(list));
     if (!ok) {
       const state = service.getSnapshot();
-      setErr(state.errorCode === "FILE_TOO_LARGE" ? t("fileTooBig") : state.errorCode === "FILE_UNSUPPORTED" ? t("fileTypeDenied") : `附件未保存：${userMessage(state.errorCode)}`);
+      setErr(state.errorCode === "FILE_TOO_LARGE" ? t("fileTooBig") : state.errorCode === "FILE_UNSUPPORTED" ? t("fileTypeDenied") : t("attachmentNotSaved", { msg: userMessage(state.errorCode, locale) }));
     }
     setBusy(false); if(inputRef.current) inputRef.current.value="";
   }
@@ -39,9 +39,10 @@ export function NodeFiles({
 
   return (
     <div className="node-files">
+      {/* The drop zone is a plain region; the real control is the button inside it,
+          so links and per-file buttons are never nested in another control. */}
       <div
         className={`file-tray ${over ? "over" : ""} ${busy ? "busy" : ""}`}
-        onClick={() => inputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
           setOver(true);
@@ -52,22 +53,16 @@ export function NodeFiles({
           setOver(false);
           void onPick(e.dataTransfer.files);
         }}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            inputRef.current?.click();
-          }
-        }}
       >
-        <span className="file-tray-mark" aria-hidden="true" />
-        <span className="file-tray-copy">
-          <span className="file-tray-kicker">{t("attachments")}</span>
-          <span className="file-tray-cta">{files.length ? t("addMoreFiles") : t("dropFiles")}</span>
-        </span>
+        <button type="button" className="file-tray-pick" disabled={busy} onClick={() => inputRef.current?.click()}>
+          <span className="file-tray-mark" aria-hidden="true" />
+          <span className="file-tray-copy">
+            <span className="file-tray-kicker">{t("attachments")}</span>
+            <span className="file-tray-cta">{files.length ? t("addMoreFiles") : t("dropFiles")}</span>
+          </span>
+        </button>
         {files.length ? (
-          <ul className="file-list" onClick={(e) => e.stopPropagation()}>
+          <ul className="file-list">
             {files.map((f) => (
               <FileRow key={f.id} file={f} onRemove={() => void remove(f.id)} />
             ))}

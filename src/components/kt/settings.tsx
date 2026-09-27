@@ -36,14 +36,16 @@ export function SettingsPage({
         </div>
       </header>
 
-      <EssentialInfo/><BackupRecency/><div className="hero-actions"><FeedbackEntry/><a className="btn" href="/download">下载本地版</a></div>
+      <EssentialInfo />
+      <BackupRecency />
+      <div className="hero-actions"><FeedbackEntry /><a className="btn" href="/download">{t("downloadLocal")}</a></div>
       <section className="settings-block">
         <h3>{t("language")}</h3>
         <div className="seg">
-          <button type="button" className={`chip ${locale === "zh" ? "on" : ""}`} onClick={() => setLocale("zh")}>
+          <button type="button" className={`chip ${locale === "zh" ? "on" : ""}`} aria-pressed={locale === "zh"} onClick={() => setLocale("zh")}>
             {t("chinese")}
           </button>
-          <button type="button" className={`chip ${locale === "en" ? "on" : ""}`} onClick={() => setLocale("en")}>
+          <button type="button" className={`chip ${locale === "en" ? "on" : ""}`} aria-pressed={locale === "en"} onClick={() => setLocale("en")}>
             {t("english")}
           </button>
         </div>
@@ -53,7 +55,7 @@ export function SettingsPage({
         <h3>{t("fontSize")}</h3>
         <div className="seg">
           {FONTS.map((f) => (
-            <button key={f} type="button" className={`chip ${font === f ? "on" : ""}`} onClick={() => setFont(f)}>
+            <button key={f} type="button" className={`chip ${font === f ? "on" : ""}`} aria-pressed={font === f} onClick={() => setFont(f)}>
               {t(f === "sm" ? "fontSm" : f === "md" ? "fontMd" : f === "lg" ? "fontLg" : "fontXl")}
             </button>
           ))}
@@ -62,7 +64,7 @@ export function SettingsPage({
 
       <section className="settings-block">
         <h3>{t("account")}</h3>
-        <p className="brief">登录仅标识账号。本机知识不按账号隔离，不会自动上传、同步或转移。</p>
+        <p className="brief">{t("accountNote")}</p>
         <SignInGate
           fallback={
             <div className="settings-auth">

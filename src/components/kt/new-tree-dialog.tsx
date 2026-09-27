@@ -1,17 +1,40 @@
 import { useState } from "react";
 import { Modal } from "./modal";
 import { TEMPLATES } from "@/lib/knowledge-tree/templates";
+import { useI18n } from "@/lib/i18n";
 
-export function NewTreeDialog({templateId,onClose,onEnter}:{templateId?:string;onClose:()=>void;onEnter:(title:string,description:string)=>void}) {
-  const [title,setTitle]=useState(""); const [description,setDescription]=useState("");
-  const template=TEMPLATES.find(t=>t.id===templateId);
-  return <Modal title="新建知识树" onClose={onClose}><form className="form new-tree-form" onSubmit={e=>{e.preventDefault();onEnter(title,description);}}>
-    <p className="brief">{template ? `从「${template.title}」开始。` : "给这棵树留一个位置。"}名字和简介以后都可以修改。</p>
-    <label>树的名字<input autoFocus value={title} placeholder="未命名" onChange={e=>setTitle(e.target.value)}/></label>
-    <label>树的简介（可不填）<textarea value={description} placeholder="这棵树想记录什么？" onChange={e=>setDescription(e.target.value)}/></label>
-    <div className="hero-actions"><button type="button" className="btn" onClick={onClose}>退出</button><button type="submit" className="btn primary">进入知识树</button></div>
-  </form></Modal>;
+export function NewTreeDialog({ templateId, onClose, onEnter }: { templateId?: string; onClose: () => void; onEnter: (title: string, description: string) => void }) {
+  const { t } = useI18n();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const template = TEMPLATES.find((tpl) => tpl.id === templateId);
+  return (
+    <Modal title={t("newTreeTitle")} onClose={onClose}>
+      <form className="form new-tree-form" onSubmit={(e) => { e.preventDefault(); onEnter(title, description); }}>
+        <p className="brief">{template ? t("fromTemplateLead", { title: template.title }) : t("newTreeLead")}{t("editableLater")}</p>
+        <label>{t("treeName")}<input autoFocus value={title} placeholder={t("untitled")} onChange={(e) => setTitle(e.target.value)} /></label>
+        <label>{t("treeIntroOptional")}<textarea value={description} placeholder={t("treeIntroPlaceholder")} onChange={(e) => setDescription(e.target.value)} /></label>
+        <div className="hero-actions">
+          <button type="button" className="btn" onClick={onClose}>{t("exit")}</button>
+          <button type="submit" className="btn primary">{t("enterTree")}</button>
+        </div>
+      </form>
+    </Modal>
+  );
 }
-export function TemplateDialog({onClose,onPick}:{onClose:()=>void;onPick:(id:string)=>void}) {
-  return <Modal title="从模板开始" onClose={onClose}><ul className="tpl-list">{TEMPLATES.filter(t=>t.id!=="blank").map(t=><li key={t.id}><button className="tpl-pick" onClick={()=>onPick(t.id)}><strong>{t.title}</strong><small>{t.description}</small></button></li>)}</ul><button className="btn" onClick={onClose}>取消</button></Modal>;
+
+export function TemplateDialog({ onClose, onPick }: { onClose: () => void; onPick: (id: string) => void }) {
+  const { t } = useI18n();
+  return (
+    <Modal title={t("fromTemplateStart")} onClose={onClose}>
+      <ul className="tpl-list">
+        {TEMPLATES.filter((tpl) => tpl.id !== "blank").map((tpl) => (
+          <li key={tpl.id}>
+            <button type="button" className="tpl-pick" onClick={() => onPick(tpl.id)}><strong>{tpl.title}</strong><small>{tpl.description}</small></button>
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="btn" onClick={onClose}>{t("cancel")}</button>
+    </Modal>
+  );
 }

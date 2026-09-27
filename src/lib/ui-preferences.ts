@@ -19,9 +19,11 @@ function subscribe(callback: () => void) {
 export function usePreference(key: string) {
   return useSyncExternalStore(subscribe,()=>readPreference(key),()=>null);
 }
-export function backupAge(value: string | null, now = Date.now()): string {
+export type BackupAge = { kind: "never" } | { kind: "today" } | { kind: "days"; days: number };
+/** How old the last successful full backup is; the caller renders it in the current locale. */
+export function backupAge(value: string | null, now = Date.now()): BackupAge {
   const at = value ? Date.parse(value) : NaN;
-  if (!Number.isFinite(at) || at > now + 60000) return "从未";
+  if (!Number.isFinite(at) || at > now + 60000) return { kind: "never" };
   const days = Math.max(0,Math.floor((now-at)/86400000));
-  return days === 0 ? "今天" : `${days} 天前`;
+  return days === 0 ? { kind: "today" } : { kind: "days", days };
 }

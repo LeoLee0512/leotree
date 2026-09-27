@@ -49,6 +49,7 @@ export function InkDock({ tab, onChange }: { tab: ShellTab; onChange: (t: ShellT
           key={item.id}
           type="button"
           className={`ink-mod ${tab === item.id ? "on" : ""}`}
+          aria-current={tab === item.id ? "page" : undefined}
           onClick={() => onChange(item.id)}
         >
           {item.icon}
