@@ -36,7 +36,7 @@
 - 移除废弃 CSS（旧社区 / 园子样式）与死代码（未调用的附件 / 进度 / 工厂函数）。
 - 文档与代码对齐：README、架构、测试说明、部署文档重写，历史报告移入 `docs/history/`。
 - `tsconfig.json` 去掉已废弃的 `baseUrl`。
-- 71 MB 的历史验收产物 `release-evidence/` 从当前树移除并加入 `.gitignore`；`activate.sh` 每次激活都重新生成 nginx 站点。
+- 71 MB 的历史验收产物 `release-evidence/` 从整个 git 历史中清除（`git filter-repo`，所有提交哈希随之改变）并加入 `.gitignore`，原件由维护者离线保存；`activate.sh` 每次激活都重新生成 nginx 站点。
 
 ## 1.0.0-beta.3（2026-09-08）
 

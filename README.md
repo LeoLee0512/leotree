@@ -51,7 +51,7 @@ npm run test:build
 npm run test:browser:production
 ```
 
-`npm test` 依次运行产品测试（`src/lib/**/*.test.ts`）和工具脚本测试（`scripts/*.test.mjs`）。浏览器脚本使用已安装的 Chrome，启动独立生产服务（端口 8082、8083），使用合成数据、独立浏览器资料和临时账号数据库，不会连接个人账号。结果、截图、运行资料与临时凭据写入已忽略的 `release-evidence/`（历史验收产物在 git 历史中仍可取回，例如 `git show a5cb382:release-evidence/<路径>`）。
+`npm test` 依次运行产品测试（`src/lib/**/*.test.ts`）和工具脚本测试（`scripts/*.test.mjs`）。浏览器脚本使用已安装的 Chrome，启动独立生产服务（端口 8082、8083），使用合成数据、独立浏览器资料和临时账号数据库，不会连接个人账号。结果、截图、运行资料与临时凭据写入已忽略的 `release-evidence/`（历史验收产物已从 git 历史清除，原件离线保存）。
 
 已有服务的单独检查是 `npm run test:browser:data` 和 `npm run test:browser:learning`，默认目标 http://localhost:8080；`RC_URL` 可指定其他实例，`RC_TEST_PORT_BASE` 可改验收端口，`RC_SERVER_ROOT` 可指向独立解压的运行包根目录。测试说明见 [tests/README.md](tests/README.md)。
 
