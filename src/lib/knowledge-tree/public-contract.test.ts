@@ -8,7 +8,7 @@ test("F09: accounts require explicit persistent configuration, secret and usable
   const valid={LEOTREE_EMAIL_AUTH:"true",LEOTREE_PGLITE_PATH:".local/account-db",BETTER_AUTH_SECRET:"x".repeat(64),BETTER_AUTH_URL:"http://localhost:8080"};
   assert.equal(emailAuthConfigured({}),false);
   assert.equal(emailAuthConfigured(valid),true);
-  for(const patch of [{LEOTREE_EMAIL_AUTH:"false"},{VITE_AUTH_ENABLED:"false"},{LEOTREE_PGLITE_PATH:""},{LEOTREE_PGLITE_PATH:"memory://"},{BETTER_AUTH_SECRET:"short"},{BETTER_AUTH_URL:"http://example.com"},{BETTER_AUTH_URL:"https://example.com/path"}]) assert.equal(emailAuthConfigured({...valid,...patch}),false);
+  for(const patch of [{LEOTREE_EMAIL_AUTH:"false"},{LEOTREE_EMAIL_AUTH:undefined},{LEOTREE_PGLITE_PATH:""},{LEOTREE_PGLITE_PATH:"memory://"},{BETTER_AUTH_SECRET:"short"},{BETTER_AUTH_URL:"http://example.com"},{BETTER_AUTH_URL:"https://example.com/path"}]) assert.equal(emailAuthConfigured({...valid,...patch}),false);
 });
 
 test("F14: archived SNN evidence matches its manifest; ordinary entry contains only a redirect", () => {

@@ -67,8 +67,9 @@ test("F07: corrupt retained garden data defers attachment cleanup and never bloc
 });
 
 test("F05: resetting progress appends history events so a complete history still replays to 未学", () => {
-  let { ws, nodeId } = seeded();
-  const treeId = ws.currentTreeId!;
+  const seed = seeded();
+  const { nodeId, treeId } = seed;
+  let ws = seed.ws;
   ws = setNodeStatus(ws, nodeId, "doing");
   ws = setNodeStatus(ws, nodeId, "done");
   const firstDoneAt = ws.trees[treeId].nodes[0].firstDoneAt;

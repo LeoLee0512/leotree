@@ -1,0 +1,15 @@
+{
+  "name": "Leo Tree",
+  "short_name": "Leo Tree",
+  "description": "保存和整理个人知识树的本机应用。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eee3c4",
+  "theme_color": "#8b3a2a",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -16,6 +16,17 @@ const FONT_SCALE: Record<FontSize, string> = {
   xl: "1.28",
 };
 
+/**
+ * Inline boot script for the document head: applies the saved font scale and
+ * locale before hydration. Generated from the same constants as `applyPrefs`
+ * so the two can never drift.
+ */
+export const PREFS_BOOT_JS =
+  `try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(PREF_KEY)})||'{}');` +
+  `var s=${JSON.stringify(FONT_SCALE)};` +
+  `if(p.font&&s[p.font])document.documentElement.style.setProperty('--leo-fs',s[p.font]);` +
+  `if(p.locale==='en')document.documentElement.lang='en';}catch(e){}`;
+
 export const defaultPrefs: Prefs = { locale: "zh", font: "md" };
 
 export function loadPrefs(): Prefs {
@@ -185,7 +196,9 @@ const ZH = {
   plantTree: "移入我的",
   planted: "已移入我的知识树",
   communityAuthor: "{name}",
-  signOutLabel: "退出登录",
+  signOut: "退出登录",
+  signingOut: "正在退出…",
+  signOutFailed: "退出未成功，请重试。本机知识仍保留。",
   searchGardens: "搜索园子",
   plantMine: "栽下我的",
   treesInGarden: "{n} 棵树",
@@ -387,7 +400,9 @@ const EN: Record<keyof typeof ZH, string> = {
   plantTree: "Move into Mine",
   planted: "Moved into your trees",
   communityAuthor: "{name}",
-  signOutLabel: "Sign out",
+  signOut: "Sign out",
+  signingOut: "Signing out…",
+  signOutFailed: "Sign-out did not complete. Try again; local knowledge is untouched.",
   searchGardens: "Search gardens",
   plantMine: "Plant mine",
   treesInGarden: "{n} trees",

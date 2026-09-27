@@ -1106,18 +1106,35 @@ textarea {
   gap: 8px;
   align-items: stretch;
 }
-.auth-social {
+.user-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  place-items: center;
+  background: color-mix(in srgb, var(--accent) 16%, var(--card));
+  color: var(--accent);
+  font-weight: 600;
 }
-.auth-or {
-  margin: 8px 0 0;
-  text-align: center;
-  font-size: 0.78rem;
-  letter-spacing: 0.16em;
-  color: var(--muted);
+.user-label { font-weight: 600; }
+.login-back { text-align: center; text-decoration: none; }
+.error-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  max-width: 36em;
 }
+.error-page h1 { margin: 0; }
+.error-page .btn { align-self: flex-start; }
 .auth-form { display: flex; flex-direction: column; gap: 8px; }
 .auth-form label {
   display: flex;

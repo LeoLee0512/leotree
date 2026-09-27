@@ -1,5 +1,4 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { authEnabled } from "@/lib/auth/client";
 import { I18nProvider, useI18n } from "@/lib/i18n";
 import { SignInPanel } from "@/components/kt/sign-in-panel";
 import { usePeachBoot } from "@/components/kt/peach-boot";
@@ -26,18 +25,14 @@ function Login() {
         <p className="brand-mark">LEO TREE</p>
         <h1 className="serif">{t("loginTitle")}</h1>
         <p className="brief">{t("loginBrief")}</p>
-        {authEnabled ? (
-          <SignInPanel
-            showGuest
-            onGuest={() => {
-              enterGuest();
-              void navigate({ to: "/" });
-            }}
-          />
-        ) : (
-          <p className="empty">{t("signInHint")}</p>
-        )}
-        <Link to="/" className="btn" style={{ textAlign: "center", textDecoration: "none" }}>
+        <SignInPanel
+          showGuest
+          onGuest={() => {
+            enterGuest();
+            void navigate({ to: "/" });
+          }}
+        />
+        <Link to="/" className="btn login-back">
           {t("backHome")}
         </Link>
       </div>

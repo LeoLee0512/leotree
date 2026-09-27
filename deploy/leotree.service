@@ -8,7 +8,8 @@ User=leotree
 Group=leotree
 WorkingDirectory=/opt/leotree/current
 EnvironmentFile=/etc/leotree.env
-ExecStart=/opt/leotree/node-v24.16.0-linux-x64/bin/node /opt/leotree/current/server/index.mjs
+# /opt/leotree/node is a symlink to the installed Node.js release directory.
+ExecStart=/opt/leotree/node/bin/node /opt/leotree/current/server/index.mjs
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30

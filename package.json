@@ -7,15 +7,11 @@
     "nf3": "0.3.17"
   },
   "scripts": {
-    "dev": "node --env-file-if-exists=.env.local scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080",
-    "build": "node --env-file-if-exists=.env.local scripts/with-app-env.mjs vite build",
+    "dev": "node --env-file-if-exists=.env.local node_modules/vite/bin/vite.js dev",
+    "build": "node --env-file-if-exists=.env.local node_modules/vite/bin/vite.js build",
     "db:migrate": "node scripts/migrate.mjs",
-    "build:dev": "node scripts/with-app-env.mjs vite build --mode development",
-    "preview": "node scripts/with-app-env.mjs vite preview",
-    "preview:restart": "node scripts/preview.mjs restart",
-    "preview:stop": "node scripts/preview.mjs stop",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "npm run test:product && npm run test:platform",
     "lint": "eslint .",
     "format": "prettier --write .",

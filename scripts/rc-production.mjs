@@ -22,7 +22,7 @@ async function available(port) {await new Promise((ok,no)=>{const s=createServer
 async function start(port,configured) {
   await available(port);
   const log=fs.openSync(`${out}/runtime/production-${port}-${stamp}-${Date.now()}.log`,"a");
-  const env={...process.env,HOST:"127.0.0.1",PORT:String(port),NITRO_PORT:String(port),DATABASE_URL:"",VITE_AUTH_ENABLED:"true",LEOTREE_EMAIL_AUTH:configured?"true":"false",LEOTREE_PGLITE_PATH:configured?dbPath:"",BETTER_AUTH_URL:`http://localhost:${port}`,BETTER_AUTH_SECRET:secret};
+  const env={...process.env,HOST:"127.0.0.1",PORT:String(port),NITRO_PORT:String(port),DATABASE_URL:"",LEOTREE_EMAIL_AUTH:configured?"true":"false",LEOTREE_PGLITE_PATH:configured?dbPath:"",BETTER_AUTH_URL:`http://localhost:${port}`,BETTER_AUTH_SECRET:secret};
   const child=spawn(process.execPath,[resolve(serverRoot,"server/index.mjs")],{env,cwd:serverRoot,stdio:["ignore",log,log],windowsHide:true});
   fs.closeSync(log);servers.add(child);child.on("exit",()=>servers.delete(child));
   let capabilities;
