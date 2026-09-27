@@ -29,18 +29,6 @@ export function progressOf(nodes: KnowledgeNode[]): {
   return { pct: Math.round((w / nodes.length) * 100), done, doing, todo };
 }
 
-export function changedToThisWeek(
-  node: KnowledgeNode,
-  to: NodeStatus,
-  start: Date,
-  cap: Date,
-): boolean {
-  const hist = node.statusHistory || [];
-  if (hist.some((h) => h.to === to && inRange(h.at, start, cap))) return true;
-  if (!hist.length && node.status === to && inRange(node.statusChangedAt, start, cap)) return true;
-  return false;
-}
-
 export function stallInfo(node: KnowledgeNode): { stall: boolean; unknown: boolean; days: number } {
   if (node.status !== "doing") return { stall: false, unknown: false, days: 0 };
   const t = node.statusChangedAt || node.firstSeenDoingAt;
@@ -80,8 +68,11 @@ export function weekSummary(source: KnowledgeTree, weekId: string) {
     if (info.stall) stalled.push({ node, days: info.days });
   }
   const weekLogs = isFuture ? [] : tree.logs.filter(e => logInWeek(e, start, cap));
+  // Section order as the user arranged it, not the alphabetical order of section IDs.
+  const sectionRank = new Map(tree.sections.map(s => [s.id, s.order]));
+  const rank = (n: KnowledgeNode) => sectionRank.get(n.sectionId) ?? Number.MAX_SAFE_INTEGER;
   const p0focus = tree.nodes.filter(n => n.priority === 0 && n.status !== "done")
-    .sort((a,b) => (a.status === "doing" ? 0 : 1) - (b.status === "doing" ? 0 : 1) || a.sectionId.localeCompare(b.sectionId) || a.order - b.order || a.id.localeCompare(b.id)).slice(0,8);
+    .sort((a,b) => (a.status === "doing" ? 0 : 1) - (b.status === "doing" ? 0 : 1) || rank(a) - rank(b) || a.sectionId.localeCompare(b.sectionId) || a.order - b.order || a.id.localeCompare(b.id)).slice(0,8);
   return { newlyDone, newlyDoing, stalled, unknownDoing, weekLogs, p0focus, isFuture,
     historyKnown: !isFuture && historyKnownSince(tree,start) };
 }

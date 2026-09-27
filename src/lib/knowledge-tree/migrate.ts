@@ -21,8 +21,6 @@ export function normalizeStatus(s: unknown): NodeStatus {
   const x = String(s ?? "todo").toLowerCase();
   if (["done", "mastered", "✓", "掌握"].includes(x) || s === "✓") return "done";
   if (["doing", "learning", "△", "在学", "正在学"].includes(x) || s === "△") return "doing";
-  if (["todo", "none", "□", "未学", "idle"].includes(x) || s === "□") return "todo";
-  if (x === "done" || x === "doing" || x === "todo") return x;
   return "todo";
 }
 
@@ -168,7 +166,9 @@ export function migrateV2ToTree(raw: Record<string, unknown>, treeId = "snn-migr
   if (extraIds.length) {
     tree.sections.push({ id: "legacy-unmapped", title: "旧版自定义节点", description: "迁移保留", order: tree.sections.length });
     for (const [order, id] of extraIds.entries()) tree.nodes.push({
-      ...tree.nodes[0], id, sectionId: "legacy-unmapped", order, title: String(map[id].title ?? id), hint: "", parentId: null,
+      id, sectionId: "legacy-unmapped", order, title: String(map[id].title ?? id), hint: "", parentId: null,
+      status: "todo", priority: 1, note: "", tags: [], createdAt: LEGACY_UNKNOWN_DATE, updatedAt: LEGACY_UNKNOWN_DATE,
+      statusChangedAt: null, firstSeenDoingAt: null, firstDoneAt: null, firstDoneExact: false,
       attachments: [], relatedNodeIds: [], prerequisiteIds: [], statusHistory: [],
     });
   }
@@ -245,8 +245,8 @@ export function migrateToV3(raw: unknown): Workspace {
 export function parseImport(raw: unknown): KnowledgeTree[] {
   if (!isRecord(raw)) throw new DataError("SCHEMA_INVALID", "Expected JSON knowledge data");
   if (raw.schemaVersion !== undefined && ![1,2,3].includes(raw.schemaVersion as number)) throw new DataError("UNSUPPORTED_VERSION", "Unsupported import schema");
-  if ("trees" in raw) return Object.values(migrateToV3(raw).trees);
-  if (Array.isArray(raw.nodes) || (isRecord(raw.tree) && ("nodes" in raw.tree || "sections" in raw.tree))) {
+  // A single exported tree (bare or wrapped as `{ tree }`); everything else is a workspace shape.
+  if (!("trees" in raw) && (Array.isArray(raw.nodes) || (isRecord(raw.tree) && ("nodes" in raw.tree || "sections" in raw.tree)))) {
     const candidate = (isRecord(raw.tree) ? raw.tree : raw) as unknown as KnowledgeTree;
     return [coerceTree(candidate, uid("tree"))];
   }

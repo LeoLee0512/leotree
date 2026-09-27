@@ -6,9 +6,10 @@
  * Storage is an adapter: swap localStorageAdapter later without
  * rewriting tree / review / log logic.
  */
+// Writes go through WorkspaceService (origin lock + compare-and-swap); the raw
+// `persistWorkspace` helper is deliberately not part of this surface.
 export {
   loadWorkspace,
-  persistWorkspace,
   exportWorkspace,
   exportTree,
   filenameForTree,

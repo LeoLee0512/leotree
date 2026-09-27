@@ -435,11 +435,23 @@ export function patchUi(ws: Workspace, patch: Partial<Workspace["ui"]>): Workspa
   return { ...ws, ui: { ...ws.ui, ...patch } };
 }
 
+/**
+ * Reset every node to 未学. Learning history stays append-only: each reset is
+ * recorded as an event so a complete history still replays to the current
+ * state, and first-completion evidence (`firstDoneAt`) is kept.
+ */
 export function resetCurrentTreeProgress(ws: Workspace): Workspace {
-  const tree = currentTree(ws);
-  if (!tree) return ws;
+  const source = currentTree(ws);
+  if (!source) return ws;
+  const tree = hydrateHistory(source);
+  const at = nowISO();
+  const events = tree.nodes
+    .filter(n => n.status !== "todo")
+    .map(n => ({ id: uid("event"), nodeId: n.id, title: n.title, priority: n.priority, from: n.status, to: "todo" as const, at, firstDone: false }));
   return replaceTree(ws, {
     ...tree,
+    historyCompleteSince: events.length ? tree.historyCompleteSince ?? at : tree.historyCompleteSince,
+    learningHistory: [...tree.learningHistory!, ...events],
     nodes: tree.nodes.map((n) => ({
       ...n,
       status: "todo" as const,

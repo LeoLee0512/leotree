@@ -99,6 +99,8 @@ test("F07: corrupt or incomplete ZIP fails before any activation", async () => {
   await assert.rejects(()=>readBackup(zipSync(archive),0),/Corrupt|hash/);
   delete archive["workspace.json"];
   await assert.rejects(()=>readBackup(zipSync(archive),0));
+  const broken=unzipSync(zip); broken["manifest.json"]=new TextEncoder().encode("{not json");
+  await assert.rejects(()=>readBackup(zipSync(broken),0),(e:unknown)=>(e as {code:string}).code==="PARSE_ERROR");
 });
 test("F08: rescue ZIP preserves an uncommitted attachment when IndexedDB rejects storage", async () => {
   const {adapter,treeId,nodeId,blobs} = fixture();

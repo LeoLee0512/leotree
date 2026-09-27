@@ -1,12 +1,10 @@
 import { weekIdFromDate } from "./dates.ts";
-import { nowISO, todayISO, uid } from "./ids.ts";
+import { nowISO, uid } from "./ids.ts";
 import { blankTemplate } from "./templates/blank.ts";
-import { getTemplate } from "./templates/index.ts";
 import type {
   KnowledgeNode,
   KnowledgeTree,
   LogStatus,
-  PracticeLog,
   Review,
   Section,
   TreeTemplate,
@@ -49,27 +47,6 @@ export function emptyReview(weekId: string): Review {
   };
 }
 
-export function emptyLog(partial: Partial<PracticeLog> = {}): PracticeLog {
-  const t = nowISO();
-  return {
-    id: uid("log"),
-    title: "",
-    date: todayISO(),
-    status: "idea",
-    question: "",
-    hypothesis: "",
-    process: "",
-    conclusion: "",
-    linkedNodeIds: [],
-    attachmentNote: "",
-    tags: [],
-    custom: {},
-    createdAt: t,
-    updatedAt: t,
-    ...partial,
-  };
-}
-
 export function instantiateTemplate(
   template: TreeTemplate,
   opts: { treeId?: string; title?: string; description?: string } = {},
@@ -82,7 +59,7 @@ export function instantiateTemplate(
     order: i,
   }));
   const nodes: KnowledgeNode[] = [];
-  template.sections.forEach((s, si) => {
+  template.sections.forEach((s) => {
     s.nodes.forEach((n, ni) => {
       nodes.push({
         id: n.id,
@@ -106,7 +83,6 @@ export function instantiateTemplate(
         relatedNodeIds: [],
         attachments: [],
       });
-      void si;
     });
   });
   return {
@@ -157,7 +133,3 @@ export const LOG_STATUS_LABEL: Record<LogStatus, string> = {
 export const NODE_STATUS_LABEL = { todo: "未学", doing: "正在学", done: "掌握" } as const;
 export const NODE_STATUS_MARK = { todo: "□", doing: "△", done: "✓" } as const;
 export const STATUS_CYCLE: Array<KnowledgeNode["status"]> = ["todo", "doing", "done"];
-
-export function getTemplateOrBlank(id: string | null): TreeTemplate {
-  return getTemplate(id) ?? blankTemplate;
-}

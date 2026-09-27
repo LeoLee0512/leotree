@@ -3,8 +3,9 @@ import { domainPayload, workspaceContent } from "./storage.ts";
 import { emptyUi, emptyWorkspace } from "./factory.ts";
 import { migrateToV3 } from "./migrate.ts";
 import { attachmentIds, type WorkspaceService } from "./service.ts";
+import { coverId, gardenReferences, retainedGardenRaw } from "./gardens.ts";
 import type { KnowledgeTree, Workspace } from "./types.ts";
-import { assertWorkspace, DataError, isRecord, validId, validateTree } from "./validation.ts";
+import { assertWorkspace, DataError, isRecord, validId } from "./validation.ts";
 
 export { APP_VERSION } from "../product-contract.ts";
 import { APP_VERSION } from "../product-contract.ts";
@@ -19,17 +20,12 @@ function counts(ws: Workspace): BackupManifest["counts"] {
   const trees = Object.values(ws.trees);
   return { trees: trees.length, sections: trees.reduce((n,t) => n+t.sections.length,0), nodes: trees.reduce((n,t) => n+t.nodes.length,0), reviews: trees.reduce((n,t) => n+Object.keys(t.reviews).length,0), logs: trees.reduce((n,t) => n+t.logs.length,0) };
 }
-function gardenReferences(raw: string | null): Set<string> {
-  const refs = new Set<string>(); if (raw === null) return refs;
-  let state: unknown;
-  try { state = JSON.parse(raw); } catch { throw new DataError("SCHEMA_INVALID", "Garden data is corrupt; export its raw source before backup"); }
-  if (!isRecord(state) || !Array.isArray(state.gardens) || !Array.isArray(state.planted)) throw new DataError("SCHEMA_INVALID", "Invalid garden metadata");
-  for (const garden of state.gardens) if (isRecord(garden) && typeof garden.art === "string" && garden.art.startsWith("cover:")) refs.add(garden.art.slice(6));
-  for (const planted of state.planted) {
-    if (!isRecord(planted) || !validateTree(planted.snapshot).valid) throw new DataError("RELATION_INVALID", "Invalid retained garden snapshot");
-    for (const n of (planted.snapshot as KnowledgeTree).nodes) for (const a of n.attachments ?? []) refs.add(a.id);
-  }
-  return refs;
+/** JSON inside an archive entry; a broken entry is a data error, never a raw SyntaxError. */
+function parseEntry(archive: Record<string, Uint8Array>, path: string): unknown {
+  const bytes = archive[path];
+  if (!bytes) throw new DataError("SCHEMA_INVALID", `Backup is missing ${path}`);
+  try { return JSON.parse(strFromU8(bytes)); }
+  catch { throw new DataError("PARSE_ERROR", `Backup entry ${path} is not valid JSON`); }
 }
 export async function createBackup(service: WorkspaceService, rescue = false): Promise<Uint8Array> {
   if (!rescue && !await service.flush()) throw new DataError("SAVE_FAILED", "Save failed; use rescue export for your pending content");
@@ -37,7 +33,7 @@ export async function createBackup(service: WorkspaceService, rescue = false): P
     if (!rescue) await service.refresh();
     const ws = service.getSnapshot().workspace; assertWorkspace(ws);
     const archive: Record<string,Uint8Array> = { "workspace.json": strToU8(JSON.stringify(domainPayload(ws))) };
-    const gardenRaw = Object.hasOwn(ws,"retainedGardenData") ? ws.retainedGardenData as string | null : service.adapter.read("leo-tree-gardens-v1");
+    const gardenRaw = retainedGardenRaw(ws, service.adapter);
     const domainRefs = attachmentIds(ws); const gardenRefs = gardenReferences(gardenRaw);
     if (gardenRaw !== null) archive["garden-assets/gardens.json"] = strToU8(gardenRaw);
     const staged = service.rescueBytes();
@@ -69,7 +65,7 @@ export async function readBackup(bytes: Uint8Array, baseRevision: number): Promi
     if (entry.name.includes("..") || entry.name.startsWith("/") || entry.name.includes("\\")) throw new DataError("SCHEMA_INVALID", "Unsafe archive path");
     total += entry.originalSize; if (total > 500 * 1024 * 1024) throw new DataError("SCHEMA_INVALID", "Unpacked backup exceeds 500 MiB"); return true;
   } });
-  const raw = JSON.parse(strFromU8(archive["manifest.json"] ?? new Uint8Array())) as unknown;
+  const raw = parseEntry(archive, "manifest.json");
   if (!isRecord(raw) || raw.backupVersion !== 1) throw new DataError("UNSUPPORTED_VERSION", "Unsupported backup format");
   if (!Array.isArray(raw.artifacts) || !raw.artifacts.every(a => isRecord(a) && typeof a.path === "string" && typeof a.sha256 === "string" && Number.isSafeInteger(a.size))) throw new DataError("SCHEMA_INVALID", "Invalid artifact manifest");
   const manifest = raw as unknown as BackupManifest;
@@ -78,7 +74,7 @@ export async function readBackup(bytes: Uint8Array, baseRevision: number): Promi
     const content = archive[a.path]; if (!content || content.length !== a.size || await sha256(content) !== a.sha256) throw new DataError("HASH_MISMATCH", `Corrupt artifact ${a.path}`);
   }
   if (!archive["workspace.json"] || await sha256(archive["workspace.json"]) !== manifest.workspaceHash) throw new DataError("HASH_MISMATCH", "Workspace hash mismatch");
-  const workspace = migrateToV3(JSON.parse(strFromU8(archive["workspace.json"])));
+  const workspace = migrateToV3(parseEntry(archive, "workspace.json"));
   if (JSON.stringify(counts(workspace)) !== JSON.stringify(manifest.counts)) throw new DataError("SCHEMA_INVALID", "Knowledge counts mismatch");
   const gardenRaw = archive["garden-assets/gardens.json"] ? strFromU8(archive["garden-assets/gardens.json"]) : null;
   const needed = new Set([...attachmentIds(workspace),...gardenReferences(gardenRaw)]);
@@ -102,9 +98,13 @@ export async function previewBackupRestore(service: WorkspaceService, bytes: Uin
   for (const [id] of result.files) if (await service.blobs.get(id)) replacements.set(id, `file-${crypto.randomUUID()}`);
   const remapTree = (tree: KnowledgeTree) => { for (const n of tree.nodes) for (const a of n.attachments ?? []) a.id = replacements.get(a.id) ?? a.id; };
   Object.values(result.workspace.trees).forEach(remapTree);
-  if (result.gardenRaw) {
-    const gardens = JSON.parse(result.gardenRaw);
-    for (const g of gardens.gardens) if (g.art.startsWith("cover:") && replacements.has(g.art.slice(6))) g.art = `cover:${replacements.get(g.art.slice(6))}`;
+  if (result.gardenRaw && replacements.size) {
+    // readBackup already validated this JSON through gardenReferences.
+    const gardens = JSON.parse(result.gardenRaw) as { gardens: unknown[]; planted: Array<{ snapshot: KnowledgeTree }> };
+    for (const g of gardens.gardens) {
+      const cover = coverId(g);
+      if (cover && replacements.has(cover)) (g as Record<string, unknown>).art = `cover:${replacements.get(cover)}`;
+    }
     for (const p of gardens.planted) remapTree(p.snapshot);
     result.gardenRaw = JSON.stringify(gardens); result.workspace.retainedGardenData = result.gardenRaw;
   }

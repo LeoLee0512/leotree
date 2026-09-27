@@ -10,6 +10,8 @@ export function createTreeFromDraft(service: WorkspaceService, title: string, de
   const next=service.getSnapshot().workspace;
   const id=next.currentTreeId;
   if(!id || before.trees[id]) return null;
-  service.bind(next)("renameTree",id,name,description.trim());
+  // The create command already carries the title; only a non-empty description needs a second command.
+  const brief=description.trim();
+  if(brief) service.bind(next)("renameTree",id,name,brief);
   return id;
 }

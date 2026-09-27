@@ -37,6 +37,10 @@ test("unterminated dollar stays literal", () => {
 test("currency sentence is not mistaken for math", () => {
   assert.deepEqual(parseMathSegments("价格 $5 和 $6 一样"), [{ kind: "text", value: "价格 $5 和 $6 一样" }]);
   assert.equal(hasMath("价格 $5 和 $6 一样"), false);
+  // A closing dollar directly followed by a digit is a price, not a formula boundary.
+  assert.deepEqual(parseMathSegments("$5,$6"), [{ kind: "text", value: "$5,$6" }]);
+  assert.equal(hasMath("共 $5,$6 两档"), false);
+  assert.deepEqual(parseMathSegments("$x$1"), [{ kind: "text", value: "$x$1" }]);
 });
 
 test("formula after a currency dollar still parses", () => {

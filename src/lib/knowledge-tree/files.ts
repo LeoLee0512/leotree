@@ -82,10 +82,8 @@ export function validateFile(file: File): { ok: true; kind: FileKind } | { ok: f
   return { ok: true, kind };
 }
 
-export const putBlob = (id: string, blob: Blob) => indexedBlobStore.putMany([[id,blob]]);
+/** Read-only access for previews/downloads. Writes go through WorkspaceService only. */
 export const getBlob = (id: string) => indexedBlobStore.get(id);
-export const deleteBlob = (id: string) => indexedBlobStore.deleteMany([id]);
-export const deleteBlobs = (ids: string[]) => indexedBlobStore.deleteMany(ids);
 
 export async function prepareFile(file: File): Promise<{ metadata: NodeAttachment; blob: Blob }> {
   const check = validateFile(file);
@@ -94,24 +92,6 @@ export async function prepareFile(file: File): Promise<{ metadata: NodeAttachmen
   const starts = (bytes: number[]) => bytes.every((v,i) => header[i] === v);
   if ((check.kind === "png" && !starts([137,80,78,71,13,10,26,10])) || (check.kind === "pdf" && !starts([37,80,68,70,45])) || (check.kind === "docx" && !starts([80,75,3,4]))) throw new DataError("FILE_UNSUPPORTED", "File content does not match its type");
   return { metadata: { id: uid("file"), name: file.name, kind: check.kind, size: file.size, addedAt: nowISO() }, blob: file };
-}
-
-export async function addFile(file: File): Promise<NodeAttachment> {
-  const check = validateFile(file);
-  if (!check.ok) {
-    const err = new Error(check.error);
-    err.name = check.error;
-    throw err;
-  }
-  const id = uid("file");
-  await putBlob(id, file);
-  return {
-    id,
-    name: file.name,
-    kind: check.kind,
-    size: file.size,
-    addedAt: nowISO(),
-  };
 }
 
 export function formatSize(n: number) {

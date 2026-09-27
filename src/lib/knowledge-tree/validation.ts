@@ -80,7 +80,7 @@ export function validateTree(value: unknown, prefix = "tree"): Validation {
     if (!sectionIds.has(n.sectionId as string)) issue(`${p}.sectionId`, "Missing section", true);
     order(n.order, `${p}.order`);
     for (const k of ["createdAt", "updatedAt"]) if (!timestamp(n[k])) issue(`${p}.${k}`, "Invalid timestamp");
-    for (const k of ["statusChangedAt", "firstSeenDoingAt", "firstDoneAt", "historyCompleteSince"]) {
+    for (const k of ["statusChangedAt", "firstSeenDoingAt", "firstDoneAt"]) {
       if (n[k] !== undefined && n[k] !== null && !timestamp(n[k])) issue(`${p}.${k}`, "Invalid optional timestamp");
     }
     if (!Array.isArray(n.statusHistory) || !n.statusHistory.every(h => isRecord(h) && statuses.includes(h.from as string) && statuses.includes(h.to as string) && timestamp(h.at))) issue(`${p}.statusHistory`, "Invalid status history");
@@ -123,11 +123,10 @@ export function validateTree(value: unknown, prefix = "tree"): Validation {
     for (const k of ["createdAt", "updatedAt"]) if (!timestamp(l[k])) issue(`${p}.${k}`, "Invalid timestamp");
     refs(l.linkedNodeIds, `${p}.linkedNodeIds`);
   });
-  const reviewIds = new Set<string>();
   for (const [id, r] of Object.entries(t.reviews as Record<string, unknown>)) {
     if (!isRecord(r)) { issue(`reviews.${id}`, "Expected review"); continue; }
-    if (!validId(id) || id !== r.weekId || reviewIds.has(String(r.weekId))) issue(`reviews.${id}.weekId`, "Invalid or duplicate review identity", true);
-    reviewIds.add(String(r.weekId));
+    // Object keys are unique by construction; the key must be the review's own week ID.
+    if (!validId(id) || id !== r.weekId) issue(`reviews.${id}.weekId`, "Review key must equal its week ID", true);
     for (const k of ["focus", "stuck", "nextMain", "nextP2", "risk", "summary"]) if (typeof r[k] !== "string") issue(`reviews.${id}.${k}`, "Expected text");
     if (!isRecord(r.custom) || !timestamp(r.updatedAt)) issue(`reviews.${id}`, "Invalid review metadata");
   }

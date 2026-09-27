@@ -49,14 +49,17 @@ export function parseMathSegments(input: string): MathSegment[] {
       i += 2;
       continue;
     }
-    // $ inline: same line only; inner edges must not be whitespace (pandoc rule,
-    // keeps currency sentences like "花了 $5 和 $6" out of the renderer)
+    // $ inline: same line only; inner edges must not be whitespace and the
+    // closing $ must not be followed by a digit (pandoc rules, so currency
+    // sentences like "花了 $5 和 $6" or "$5,$6" never reach the renderer)
     const nl = text.indexOf("\n", i + 1);
     const end = text.indexOf("$", i + 1);
     const lineEnd = nl === -1 ? text.length : nl;
     if (end !== -1 && end < lineEnd) {
       const raw = text.slice(i + 1, end);
-      if (raw.trim() && !isWs(raw[0]) && !isWs(raw[raw.length - 1])) {
+      const after = text[end + 1];
+      const digitAfter = after !== undefined && after >= "0" && after <= "9";
+      if (raw.trim() && !isWs(raw[0]) && !isWs(raw[raw.length - 1]) && !digitAfter) {
         flushText();
         out.push({ kind: "inline", tex: raw });
         i = end + 1;

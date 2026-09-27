@@ -3,8 +3,9 @@ import { indexedBlobStore, prepareFile, type BlobStore, type NodeAttachment } fr
 import { uid } from "./ids.ts";
 import { applyOperation, prepareOperation, uiOperations, type Commit, type Invocation, type UiInvocation } from "./operations.ts";
 import { ACTIVE_KEY, SAFE_KEY, activateRecovery, localStorageAdapter, readSource, readWorkspace, writeRecord, workspaceContent, type ReadResult, type StorageAdapter } from "./storage.ts";
-import type { KnowledgeTree, Workspace } from "./types.ts";
-import { assertTree, assertWorkspace, DataError, isRecord, validateTree } from "./validation.ts";
+import { gardenReferences, retainedGardenRaw } from "./gardens.ts";
+import { STORAGE_KEY_V3, type KnowledgeTree, type Workspace } from "./types.ts";
+import { assertTree, assertWorkspace, DataError } from "./validation.ts";
 
 export type SaveState = "SAVED" | "SAVING" | "SAVE_FAILED" | "DEGRADED" | "RECOVERY_REQUIRED";
 export interface ServiceState { workspace: Workspace; status: SaveState; message: string; errorCode: string | null; recovery: ReadResult | null; }
@@ -86,29 +87,20 @@ export class WorkspaceService {
       this.timer = setTimeout(() => { void this.flush(); }, this.delay);
     }
   }
+  /** Garden references that must be kept; any unreadable garden data defers cleanup instead of deleting bytes. */
+  private gardenRefsForCleanup(raw: string | null, what: string): Set<string> {
+    try { return gardenReferences(raw); }
+    catch (error) { throw new DataError("CLEANUP_DEFERRED", `${what}; no files deleted. ${error instanceof Error ? error.message : String(error)}`); }
+  }
   private async collectUnused(active: Workspace) {
     const used = attachmentIds(active);
     const safe = readSource(this.adapter, SAFE_KEY);
     if (safe.code !== "MISSING" && !safe.workspace) throw new DataError("CLEANUP_DEFERRED", "Unreadable recovery copy; attachment cleanup deferred");
     if (safe.workspace) {
       attachmentIds(safe.workspace).forEach(id => used.add(id));
-      if (typeof safe.workspace.retainedGardenData === "string") {
-        const previous = JSON.parse(safe.workspace.retainedGardenData);
-        for (const g of previous.gardens ?? []) if (typeof g.art === "string" && g.art.startsWith("cover:")) used.add(g.art.slice(6));
-        for (const p of previous.planted ?? []) for (const n of p.snapshot.nodes) for (const a of n.attachments ?? []) used.add(a.id);
-      }
+      if (typeof safe.workspace.retainedGardenData === "string") this.gardenRefsForCleanup(safe.workspace.retainedGardenData, "Unreadable garden references in the recovery copy").forEach(id => used.add(id));
     }
-    const raw = Object.hasOwn(active,"retainedGardenData") ? active.retainedGardenData as string | null : this.adapter.read("leo-tree-gardens-v1");
-    if (raw !== null) {
-      let gardens: unknown;
-      try { gardens = JSON.parse(raw); } catch { throw new DataError("CLEANUP_DEFERRED", "Unreadable garden references; no files deleted"); }
-      if (!isRecord(gardens) || !Array.isArray(gardens.gardens) || !Array.isArray(gardens.planted)) throw new DataError("CLEANUP_DEFERRED", "Unrecognised garden references; no files deleted");
-      for (const g of gardens.gardens) if (isRecord(g) && typeof g.art === "string" && g.art.startsWith("cover:")) used.add(g.art.slice(6));
-      for (const p of gardens.planted) {
-        if (!isRecord(p) || !validateTree(p.snapshot).valid) throw new DataError("CLEANUP_DEFERRED", "Invalid garden snapshot; no files deleted");
-        for (const n of (p.snapshot as KnowledgeTree).nodes) for (const a of n.attachments ?? []) used.add(a.id);
-      }
-    }
+    this.gardenRefsForCleanup(retainedGardenRaw(active, this.adapter), "Unreadable garden references").forEach(id => used.add(id));
     // Pending local drafts also own their prepared bytes until retry/rescue/discard.
     this.staged.forEach((_blob,id) => used.add(id));
     await this.blobs.deleteMany((await this.blobs.keys()).filter(id => !used.has(id)));
@@ -126,13 +118,15 @@ export class WorkspaceService {
       for (const entry of batch) next = entry.apply(next);
       assertWorkspace(next);
       const used = attachmentIds(next);
-      const retained = next.retainedGardenData;
-      if (typeof retained === "string") {
-        const gardens = JSON.parse(retained);
-        for (const g of gardens.gardens ?? []) if (typeof g.art === "string" && g.art.startsWith("cover:")) used.add(g.art.slice(6));
-        for (const p of gardens.planted ?? []) for (const n of p.snapshot.nodes) for (const a of n.attachments ?? []) used.add(a.id);
+      // Staged bytes are written only when the committed content references them.
+      // Unreadable garden data must never block a knowledge save nor drop staged
+      // bytes, so in that case every staged blob is kept for the commit.
+      let stagedFilter: (id: string) => boolean = id => used.has(id);
+      if (typeof next.retainedGardenData === "string") {
+        try { gardenReferences(next.retainedGardenData).forEach(id => used.add(id)); }
+        catch { stagedFilter = () => true; }
       }
-      const staged = [...this.staged].filter(([id]) => used.has(id));
+      const staged = [...this.staged].filter(([id]) => stagedFilter(id));
       const newBytes: Array<[string,Blob]> = [];
       for (const [id,blob] of staged) {
         const existing = await this.blobs.get(id);
@@ -170,11 +164,13 @@ export class WorkspaceService {
     const source = readWorkspace(this.adapter);
     if (!source.workspace) { this.set({ recovery: source, status: "RECOVERY_REQUIRED", errorCode: source.code, message: source.message ?? source.code }); return; }
     this.committed = source.workspace;
-    this.set({ workspace: this.preserveView(source.workspace) });
+    // A peer tab may have activated a recovery copy; this tab is then editable again.
+    const recovered = this.state.recovery !== null;
+    this.set({ workspace: this.preserveView(source.workspace), ...(recovered ? { recovery: null, status: "SAVED" as const, errorCode: null, message: "" } : {}) });
   }
   start() {
     const refresh = () => { void this.refresh(); };
-    const storage = (event: StorageEvent) => { if (!event.key || [ACTIVE_KEY,"knowledge-tree-workspace-v3"].includes(event.key)) refresh(); };
+    const storage = (event: StorageEvent) => { if (!event.key || [ACTIVE_KEY,STORAGE_KEY_V3].includes(event.key)) refresh(); };
     const unload = (event: BeforeUnloadEvent) => { if (this.pending.length || this.running) { event.preventDefault(); event.returnValue = ""; } };
     const hide = () => { if (document.visibilityState === "hidden") void this.flush(); };
     window.addEventListener("storage",storage); window.addEventListener("focus",refresh); window.addEventListener("beforeunload",unload); document.addEventListener("visibilitychange",hide);
@@ -244,6 +240,9 @@ export class WorkspaceService {
   }
   async discardDraft(confirmed: boolean) {
     if (!confirmed) return;
+    // A commit already in flight finishes first; only what it did not persist is discarded.
+    if (this.running) await this.running.catch(() => false);
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
     this.pending = []; this.staged.clear(); this.set({ status: "SAVED", errorCode: null, message: "" }); await this.refresh();
   }
   rescueBytes(): Map<string,Blob> { return new Map(this.staged); }
