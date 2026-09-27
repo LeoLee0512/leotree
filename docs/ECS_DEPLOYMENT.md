@@ -1,34 +1,43 @@
 # ECS 部署与维护
 
-目标：https://8.130.33.10/ 。当前运行版本：1.0.0-beta.3，源代码提交 b81bc13（运行目录 `/opt/leotree/releases/leotree-beta3-20260908`）。历史公网版本：1.0.0-beta.1 / cc8ba79、1.0.0-beta.2 / 750937f。
-
-已上线。用户放行安全组后，2026-09-05 15:28 UTC 从外网直接访问 HTTPS 返回 200；Chrome 正常验证证书，TLS 1.3、安全上下文、Web Locks 实际获取锁均通过。HTTP 自动转向 HTTPS，下载页返回 200。证据见 release-evidence/beta-public-https.json；未使用 SSH 隧道或跳过证书校验。早期端口未放行时的超时记录保留为历史证据。
-
-直接公网浏览器回归：数据安全 10/10、学习流程与手机尺寸 5/5、首次体验 5/5，全部通过。完整索引见 BETA_STATUS.md。此次放行后没有更改应用构建，仍是源代码 cc8ba79 对应的已验证运行文件。
-
-## 更新记录
-
-- **1.0.0-beta.3 / b81bc13（2026-09-08）**：LaTeX 公式支持——节点笔记公式工具栏 + 实时预览、实践日志四字段紧凑公式面板、标题/摘要/节点卡片读取态公式渲染（KaTeX 懒加载）。数据模型零改动（公式以 `$…$` 文本存于现有字段，无 migration）。tar.gz SHA256 `9a7853d1…644f0`（14,364,523 字节，472 文件，新增 KaTeX 字体），服务器端校验通过。旧版 `leotree-beta2-20260908` 目录保留。公网实测 `node scripts/math-check.mjs`（RC_URL=https://8.130.33.10）6/6 通过。
-- **1.0.0-beta.2 / 750937f（2026-09-08）**：幽灵控件修复、分区命名弹窗、全年阅读进度、标准空白模板、下载页间距调整。tar.gz SHA256 `aff3b28c…209430`（13,313,439 字节，410 文件），上传后服务器端校验通过。旧版 `beta1-20260905` 目录保留。线上实测：下载页间距 margin 20px 生效，空园子 `.data-tools`=0。本地构建用 Windows 时须以 `tar -czf` 打包（`Compress-Archive` 会写入反斜杠路径导致解压错乱）。
+公网地址：https://8.130.33.10/ 。线上版本、部署日期和运行目录记录在本文末尾的「上线记录」，每次激活新版本后追加一行。
 
 ## 布局
 
-- 系统：Ubuntu 22.04.5，Node 24.16.0（官方 SHA256 核对后安装）。
-- 应用：/opt/leotree/releases/<版本目录>；current 符号链接指向当前运行版本（现指向 leotree-beta3-20260908；历史：beta1-20260905、leotree-beta2-20260908）。
-- Node：/opt/leotree/node-v24.16.0-linux-x64/bin/node。
-- 用户：leotree；systemd 服务 leotree，只监听 127.0.0.1:3008；开机启动、失败重启。
-- 服务配置：/etc/systemd/system/leotree.service；环境文件 /etc/leotree.env，root-only，随机服务密钥不写入代码或交付包。
-- 运行数据：/var/lib/leotree。公开邮箱注册关闭；知识和附件仍只在用户浏览器里。
-- Nginx：/etc/nginx/sites-available/leotree，已启用；80 保留 ACME 验证，其余转 HTTPS；443 终止 TLS 后转发本机应用。
-- 原 Nginx 站点备份：/opt/leotree/backups/nginx-sites-20260905。既有其他站点和 Docker 应用保留；原有重复 server_name _ 警告不属于此次新增故障。
-- 部署源配置在仓库 deploy/。应用压缩包 SHA256：8d784da09a60f7bf894ad9eb2be3fd5f1cf549fe1ab40d9c1d3bfa2f2f0ac4a4（13,321,577 字节），服务器解包前校验通过。
-- 运行目录 DEPLOYMENT.json 记录源代码版本和全部 410 个文件的 SHA256；实际服务器逐文件复核 PASS，重启后可信 HTTPS 与 capability 检查 PASS，见 release-evidence/beta-remote-integrity-and-restart.txt。
+- 系统：Ubuntu 22.04，Node.js 24（官方 SHA256 核对后安装），安装目录通过符号链接 `/opt/leotree/node` 引用。
+- 应用：`/opt/leotree/releases/<版本目录>`；`/opt/leotree/current` 符号链接指向当前运行版本。
+- 用户：`leotree`；systemd 服务 `leotree`，只监听 127.0.0.1:3008；开机启动、失败重启。
+- 服务配置：`/etc/systemd/system/leotree.service`；环境文件 `/etc/leotree.env`（root-only，包含随机服务密钥，不写入代码或交付包）。
+- 运行数据：`/var/lib/leotree`。公开邮箱注册默认关闭（`LEOTREE_EMAIL_AUTH=false`）；知识和附件只在用户浏览器里。
+- Nginx：`/etc/nginx/sites-available/leotree`；80 只保留 ACME 验证，其余转 HTTPS；443 终止 TLS 后转发本机应用，并加上 HSTS、CSP（仅同源资源）、`X-Frame-Options`、`Referrer-Policy` 等响应头。
+- 部署源配置在仓库 `deploy/`：`leotree.service`、`leotree-cert-renew.service`、`leotree-cert-renew.timer`、`leotree.nginx.conf`、`activate.sh`。
+
+## 首次或更新部署
+
+1. 本机构建并检查：`npm ci && npm run build && npm run test:build`。
+2. 把 `.output/` 打包为独立归档（Linux/macOS 用 `tar -czf`；Windows 也用 `tar`，`Compress-Archive` 会写入反斜杠路径），记录 SHA256。
+3. 上传归档和仓库 `deploy/` 目录到服务器，核对 SHA256，解包到一个新的版本目录，不要覆盖旧目录。
+4. 执行 `bash /opt/leotree/deploy/activate.sh <版本目录名> [公网主机]`。公网主机（IP 或域名）只在首次激活时需要，用于生成 `/etc/leotree.env` 和 nginx 站点；之后保留现有配置。脚本会创建用户和目录、切换 `current`、安装 systemd 单元、重启服务、等待 `/api/auth/capabilities` 返回、写入并启用 nginx 站点、启用证书续期定时器。
+5. 验证服务、HTTPS 和浏览器功能（例如 `RC_URL=https://<主机> npm run test:browser:data`），然后在下方追加上线记录。
+
+## 回退
+
+更新前 `current` 的目标写入 `/opt/leotree/backups/previous-release.txt`。回退到一个确实存在且验证过的旧目录：
+
+```sh
+old_release=/opt/leotree/releases/<已验证的旧版本目录>
+test -f "$old_release/server/index.mjs"
+ln -s "$old_release" /opt/leotree/current.rollback
+mv -Tf /opt/leotree/current.rollback /opt/leotree/current
+systemctl restart leotree
+curl --noproxy '*' --fail http://127.0.0.1:3008/api/auth/capabilities
+```
+
+需要整体撤下部署时，先停止 `leotree`，再从备份还原原 Nginx 站点，`nginx -t` 后 reload；保留版本包和运行数据，不要动用户浏览器里的知识。
 
 ## IP 证书续期
 
-已签发 Let's Encrypt IP SAN 证书，路径 /etc/letsencrypt/live/8.130.33.10/。当前有效期至 2026-09-12 06:03:06 UTC。使用 Certbot 5.8.0 和 shortlived 配置。
-
-IP 证书有效期短，需要自动续期；具体机制依据 [Let's Encrypt 官方 Certbot 指南](https://letsencrypt.org/2026/03/11/shorter-certs-certbot)。本实例 leotree-cert-renew.timer 每六小时运行并有最多五分钟随机延迟；Persistent=true。续期成功执行 systemctl reload nginx。已通过 renew --dry-run --run-deploy-hooks，并执行真实定时服务一次，Result=success、ExecMainStatus=0。真实运行时未到续期时间不会强制换证。
+Let's Encrypt IP SAN 证书路径 `/etc/letsencrypt/live/<主机>/`，使用 Certbot 的 shortlived 配置，有效期短，必须自动续期（参考 [Let's Encrypt 官方说明](https://letsencrypt.org/2026/03/11/shorter-certs-certbot)）。`leotree-cert-renew.timer` 每六小时运行一次，最多五分钟随机延迟，`Persistent=true`；续期成功后 `systemctl reload nginx`。服务器原有代理环境指向不可用地址，Certbot 单元单独清空代理变量。80 端口的 ACME 路径需要长期开放。
 
 维护检查（服务器 root）：
 
@@ -39,27 +48,16 @@ journalctl -u leotree -u leotree-cert-renew.service --since today --no-pager
 nginx -t
 ```
 
-服务器原有代理环境指向不可用地址，Certbot unit 单独清空代理变量。未更改其他应用的代理配置。需长期保留 80 的 ACME 路径开放；证书演练首次签发曾遇外网次级校验超时，重试签发及后续续期演练成功。
-
-## 更新和回退
-
-每次将新构建 .output 打为独立归档，上传到 releases，先核对 SHA256，再解包到一个新的版本目录。不要覆盖旧目录。上传 deploy/ 后执行 `bash /opt/leotree/deploy/activate.sh 新版本目录名`。验证服务、HTTPS 和浏览器功能，最后记录 current 的目标和源代码提交。
-
-更新前 current 目标写入 /opt/leotree/backups/previous-release.txt。要回退到一个确实存在且通过过验证的旧目录：
-
-```sh
-old_release=/opt/leotree/releases/已验证的旧版本目录
-test -f "$old_release/server/index.mjs"
-ln -s "$old_release" /opt/leotree/current.rollback
-mv -Tf /opt/leotree/current.rollback /opt/leotree/current
-systemctl restart leotree
-curl --noproxy '*' --fail http://127.0.0.1:3008/api/auth/capabilities
-```
-
-这是首次 ECS 上线，目前没有前一版线上运行目录，不能虚称已演练线上历史版本回滚。需要整体撤下本次部署时，先停止 leotree，再从备份还原原 Nginx 站点并运行 nginx -t 后 reload；保留版本包和运行数据，勿删除浏览器知识。原 RC1 源码和运行包另存于桌面，可用于重新构建验证。
-
 ## 用户数据迁移
 
-localhost、公网 IP、未来域名是不同浏览器来源。到旧地址下载完整 ZIP，再到新地址恢复；不会自动上传或同步。完整 ZIP 不含账号数据库或浏览器偏好，因此首次提示与上次备份时间也不跨地址迁移。
+localhost、公网 IP、未来域名是不同的浏览器来源。到旧地址下载完整 ZIP，再到新地址恢复；不会自动上传或同步。完整 ZIP 不含账号数据库或浏览器偏好，因此首次提示与上次备份时间也不跨地址迁移。
 
-反馈链接后续由用户提供；Windows .exe 当前不发布。服务器运行包供维护使用，不是面向用户的 Windows 安装包。
+## 上线记录
+
+| 日期 | 版本 / 提交 | 运行目录 | 备注 |
+| --- | --- | --- | --- |
+| 2026-09-05 | 1.0.0-beta.1 / cc8ba79 | `beta1-20260905` | 首次公网上线；放行 443 后直接 HTTPS 验证通过，证据见 docs/history |
+| 2026-09-08 | 1.0.0-beta.2 / 750937f | `leotree-beta2-20260908` | 幽灵控件、分区命名弹窗、全年进度、标准空白模板、下载页间距 |
+| 2026-09-08 | 1.0.0-beta.3 / b81bc13 | `leotree-beta3-20260908` | LaTeX 公式（KaTeX），数据模型无改动；公网 `scripts/math-check.mjs` 6/6 通过 |
+
+beta.4（本仓库当前代码）尚未部署：它移除了第三方脚本注入与平台身份网关，nginx 配置与 `activate.sh` 也已更新，首次激活时需要传入公网主机参数，并重新生成 nginx 站点文件（旧站点文件不含新的响应头）。

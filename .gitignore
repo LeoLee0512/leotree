@@ -1,15 +1,15 @@
 node_modules/
 .output/
-.vercel/
 .nitro/
 dist/
 .tanstack/
 .env
 .env.*
 !.env.example
+.local/
+
+# Browser-test output: runtime logs, temporary account databases, Chrome profiles.
 release-evidence/runtime/
 release-evidence/profiles/
 test-results/
 playwright-report/
-
-.local/
