@@ -9,4 +9,4 @@
 
 `test:browser:data` covers ten adversarial storage scenarios. `test:browser:learning` covers 390/430/desktop loops and both mobile maximum-font/landscape cases. `test:browser:beta` covers the first-minute flow. `RC_URL` overrides the local target. Keyboard occupancy is simulated by shrinking the viewport.
 
-Historical acceptance reports are under `docs/history/`; the evidence files they cite live in git history before commit `a5cb382`.
+Historical acceptance reports are under `docs/history/`; the evidence files they cite live in git history up to commit `a5cb382` (removed in `cae4d3d`).
