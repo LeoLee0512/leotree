@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Run as root after uploading an independently SHA256-verified .output archive.
 #   bash /opt/leotree/deploy/activate.sh <release-directory-name> [public-host]
-# public-host (IP or domain) is only needed the first time, to write /etc/leotree.env
-# and the nginx site; later runs keep the existing configuration.
+# public-host (IP or domain) is required the first time and is remembered in
+# /etc/leotree.host. Every run regenerates the nginx site from deploy/
+# leotree.nginx.conf for that host, so header changes ship with the release;
+# the previous site file is kept under /opt/leotree/backups.
 set -euo pipefail
 release="${1:?versioned release directory name required}"
 [[ "$release" =~ ^[a-zA-Z0-9._-]+$ ]] || exit 2
@@ -13,8 +15,14 @@ id leotree >/dev/null 2>&1 || useradd --system --home /var/lib/leotree --shell /
 install -d -o leotree -g leotree -m 700 /var/lib/leotree
 install -d -m 755 /opt/leotree/backups
 
+if [ -n "${2:-}" ]; then
+    [[ "$2" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo "invalid public host: $2" >&2; exit 2; }
+    printf '%s\n' "$2" > /etc/leotree.host
+fi
+host="$(cat /etc/leotree.host 2>/dev/null || true)"
+[ -n "$host" ] || { echo "public host (IP or domain) required on first activation" >&2; exit 2; }
+
 if [ ! -f /etc/leotree.env ]; then
-    host="${2:?public host (IP or domain) required on first activation}"
     umask 077
     {
         printf '%s\n' 'NODE_ENV=production' 'HOST=127.0.0.1' 'PORT=3008' 'NITRO_PORT=3008' \
@@ -44,12 +52,18 @@ for attempt in $(seq 1 30); do
 done
 curl --noproxy '*' --fail --silent http://127.0.0.1:3008/api/auth/capabilities
 
-if [ ! -f /etc/nginx/sites-available/leotree ]; then
-    host="${2:?public host (IP or domain) required on first activation}"
-    sed "s/LEOTREE_HOST/$host/g" "$deploy_dir/leotree.nginx.conf" > /etc/nginx/sites-available/leotree
+site=/etc/nginx/sites-available/leotree
+if [ -f "$site" ]; then
+    cp "$site" "/opt/leotree/backups/leotree.nginx.conf.$(date +%Y%m%d%H%M%S)"
 fi
-ln -sfn /etc/nginx/sites-available/leotree /etc/nginx/sites-enabled/leotree
-nginx -t
-systemctl reload nginx
+sed "s/LEOTREE_HOST/$host/g" "$deploy_dir/leotree.nginx.conf" > "$site.next"
+ln -sfn "$site" /etc/nginx/sites-enabled/leotree
+if nginx -t -c /etc/nginx/nginx.conf >/dev/null 2>&1 && mv -f "$site.next" "$site" && nginx -t; then
+    systemctl reload nginx
+else
+    # Keep the site that was serving; the failed candidate stays beside it for inspection.
+    echo "new nginx site failed validation; the previous site is unchanged" >&2
+    exit 1
+fi
 systemctl enable --now leotree-cert-renew.timer
 systemctl is-active leotree nginx leotree-cert-renew.timer

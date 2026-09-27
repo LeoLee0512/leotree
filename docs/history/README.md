@@ -1,6 +1,6 @@
 # 历史记录
 
-这里保存 RC1（2026-09-05）和 Public Beta（beta.1 至 beta.3）阶段的审阅、计划、验收和状态报告。它们描述当时的代码与证据，不再随代码更新；文中相对路径（如 `release-evidence/…`、`docs/ECS_DEPLOYMENT.md`）以仓库根目录为准。
+这里保存 RC1（2026-09-05）和 Public Beta（beta.1 至 beta.3）阶段的审阅、计划、验收和状态报告。它们描述当时的代码与证据，不再随代码更新；文中相对路径以仓库根目录为准；引用的 `release-evidence/…` 证据文件已从当前树移除，可在提交 `a5cb382` 之前的历史中取回（`git show a5cb382:release-evidence/<路径>`）。
 
 - `ASTRA_REVIEW_BRIEF.md`：最初的全仓库审阅任务书。
 - `KNOWLEDGE_TREE_ENGINE_REPORT_PREEXISTING.md`：审阅前的引擎报告。

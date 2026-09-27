@@ -17,7 +17,7 @@
 1. 本机构建并检查：`npm ci && npm run build && npm run test:build`。
 2. 把 `.output/` 打包为独立归档（Linux/macOS 用 `tar -czf`；Windows 也用 `tar`，`Compress-Archive` 会写入反斜杠路径），记录 SHA256。
 3. 上传归档和仓库 `deploy/` 目录到服务器，核对 SHA256，解包到一个新的版本目录，不要覆盖旧目录。
-4. 执行 `bash /opt/leotree/deploy/activate.sh <版本目录名> [公网主机]`。公网主机（IP 或域名）只在首次激活时需要，用于生成 `/etc/leotree.env` 和 nginx 站点；之后保留现有配置。脚本会创建用户和目录、切换 `current`、安装 systemd 单元、重启服务、等待 `/api/auth/capabilities` 返回、写入并启用 nginx 站点、启用证书续期定时器。
+4. 执行 `bash /opt/leotree/deploy/activate.sh <版本目录名> [公网主机]`。公网主机（IP 或域名）首次激活时必须给出，之后记在 `/etc/leotree.host`，可省略。脚本会创建用户和目录、切换 `current`、安装 systemd 单元、重启服务、等待 `/api/auth/capabilities` 返回，然后**每次都从 `deploy/leotree.nginx.conf` 重新生成 nginx 站点**（旧站点文件备份到 `/opt/leotree/backups/`，新文件通过 `nginx -t` 才会启用），最后启用证书续期定时器。
 5. 验证服务、HTTPS 和浏览器功能（例如 `RC_URL=https://<主机> npm run test:browser:data`），然后在下方追加上线记录。
 
 ## 回退
@@ -60,4 +60,4 @@ localhost、公网 IP、未来域名是不同的浏览器来源。到旧地址�
 | 2026-09-08 | 1.0.0-beta.2 / 750937f | `leotree-beta2-20260908` | 幽灵控件、分区命名弹窗、全年进度、标准空白模板、下载页间距 |
 | 2026-09-08 | 1.0.0-beta.3 / b81bc13 | `leotree-beta3-20260908` | LaTeX 公式（KaTeX），数据模型无改动；公网 `scripts/math-check.mjs` 6/6 通过 |
 
-beta.4（本仓库当前代码）尚未部署：它移除了第三方脚本注入与平台身份网关，nginx 配置与 `activate.sh` 也已更新，首次激活时需要传入公网主机参数，并重新生成 nginx 站点文件（旧站点文件不含新的响应头）。
+beta.4（本仓库当前代码）尚未部署：它移除了第三方脚本注入与平台身份网关。激活时传入公网主机（`bash activate.sh <目录> 8.130.33.10`），脚本会重新生成带新响应头的 nginx 站点。
