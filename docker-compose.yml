@@ -1,0 +1,22 @@
+# Leo Tree on the same host as LeoMath. Only loopback is published; nginx on the
+# host terminates TLS for tree.leomath.cn and proxies to 127.0.0.1:3008.
+services:
+  tree:
+    build:
+      context: .
+      args:
+        VITE_AUTH_ENABLED: "true"
+    restart: unless-stopped
+    environment:
+      LEOTREE_EMAIL_AUTH: ${LEOTREE_EMAIL_AUTH:-false}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://tree.leomath.cn}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set a random 64-hex secret in .env}
+      LEOTREE_PGLITE_PATH: /var/lib/leotree/platform-db
+      DATABASE_URL: ""
+    volumes:
+      - leotree-data:/var/lib/leotree
+    ports:
+      - "127.0.0.1:${TREE_PORT:-3008}:3008"
+
+volumes:
+  leotree-data:

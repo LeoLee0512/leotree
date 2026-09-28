@@ -1,5 +1,7 @@
 # ECS 部署与维护
 
+> **历史文档（2026-09-28 起不再适用）。** 服务器已重装，裸 IP 入口 `https://8.130.33.10/` 与 IP 证书均已停用。当前部署方案是 Docker + 子域名 `tree.leomath.cn`，见 [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)。
+
 目标：https://8.130.33.10/ 。当前运行版本：1.0.0-beta.3，源代码提交 b81bc13（运行目录 `/opt/leotree/releases/leotree-beta3-20260908`）。历史公网版本：1.0.0-beta.1 / cc8ba79、1.0.0-beta.2 / 750937f。
 
 已上线。用户放行安全组后，2026-09-05 15:28 UTC 从外网直接访问 HTTPS 返回 200；Chrome 正常验证证书，TLS 1.3、安全上下文、Web Locks 实际获取锁均通过。HTTP 自动转向 HTTPS，下载页返回 200。证据见 release-evidence/beta-public-https.json；未使用 SSH 隧道或跳过证书校验。早期端口未放行时的超时记录保留为历史证据。

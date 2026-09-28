@@ -2,7 +2,7 @@
 
 Leo Tree 是保存和整理个人知识树的本机应用。围绕「查找 → 记录 → 实践 → 回顾 → 返回节点 → 修整结构」工作，保留纸墨视觉、我的 / 社区 / 设置导航和 SNN 模板。
 
-本包是 **1.0.0-beta.1**。当前验证和部署进度见 [BETA_STATUS.md](BETA_STATUS.md)，服务器运维见 [ECS_DEPLOYMENT.md](docs/ECS_DEPLOYMENT.md)。RC1 报告和原交付包是历史证据，继续保留。原 review README 保存在 [docs/archive/REVIEW_SNAPSHOT_README.md](docs/archive/REVIEW_SNAPSHOT_README.md)。
+本包是 **1.0.0-beta.1**。当前验证和部署进度见 [BETA_STATUS.md](BETA_STATUS.md)，服务器运维见 [DOCKER_DEPLOYMENT.md](docs/DOCKER_DEPLOYMENT.md)（tree.leomath.cn + Docker，与 LeoMath 同机）；旧的裸 IP systemd 部署记录见 [ECS_DEPLOYMENT.md](docs/ECS_DEPLOYMENT.md)，仅作历史参考。RC1 报告和原交付包是历史证据，继续保留。原 review README 保存在 [docs/archive/REVIEW_SNAPSHOT_README.md](docs/archive/REVIEW_SNAPSHOT_README.md)。
 
 公网网页版：[立即使用 Leo Tree](https://8.130.33.10/)；[版本与下载页](https://8.130.33.10/download)。无需安装或登录，知识仍保存在当前浏览器。
 
